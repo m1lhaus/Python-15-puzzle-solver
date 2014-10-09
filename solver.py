@@ -31,10 +31,10 @@ Fi_3_name = 3
 Fi_4_name = 4
 MOVES = {0: u"INIT", 1: u"▮▮_→", 2: u"▮▮_↓", 3: u"←_▮▮", 4: u"▮▮_↑"}
 SPACER = 0
-places = {1: (0, 0), 2: (0, 1), 3: (0, 2), 4: (0, 3),           # ONLY FOR 4x4 !
-          5: (1, 0), 6: (1, 1), 7: (1, 2), 8: (1, 3),
-          9: (2, 0), 10: (2, 1), 11: (2, 2), 12: (2, 3),
-          13: (3, 0), 14: (3, 1), 15: (3, 2), 0: (3, 3)}
+# manhattan_helper = {1: (0, 0), 2: (0, 1), 3: (0, 2), 4: (0, 3),           # ONLY FOR 4x4 !
+#                     5: (1, 0), 6: (1, 1), 7: (1, 2), 8: (1, 3),
+#                     9: (2, 0), 10: (2, 1), 11: (2, 2), 12: (2, 3),
+#                     13: (3, 0), 14: (3, 1), 15: (3, 2), 0: (3, 3)}
 
 
 class Node():
@@ -45,7 +45,6 @@ class Node():
         self.parrent = parrent
         self.data = data
         self.id_ = str(data[0] + data[1] + data[2] + data[3]).replace(" ", "")
-
         self.g_func = g_func
         self.h_func = h_func
         self.f_func = g_func + h_func
@@ -231,7 +230,7 @@ def calc_hfunc_manhattan(data):
             num = data[ii][jj]            # number in 'data' matrix
             if num != SPACER:
                 num1 = (ii, jj)           # coordinates where number from 'data' is
-                num2 = places[num]      # coordinates where should number from 'data' matrix be
+                num2 = manhattan_helper[num]      # coordinates where should number from 'data' matrix be
                 #h += cityblock((i, j), places[num])                        # uses cipy.spatial.distance.cityblock
                 h += abs(num1[0] - num2[0]) + (abs(num1[1] - num2[1]))      # from its correct position
     return h
@@ -243,6 +242,16 @@ def calc_hfunc_none(data):
     :rtype: int
     """
     return 0
+
+
+def init_manhattan_helper():
+    manhattan_helper = {}
+    for ii in range(nrows):
+        for jj in range(ncols):
+            manhattan_helper[target_data[ii][jj]] = (ii, jj)
+
+    del manhattan_helper[SPACER]
+    return manhattan_helper
 
 
 def find_spacer(data):
@@ -373,7 +382,6 @@ def print_selected_Hfunc():
         print "H function: None"
     print "="*100
 
-
 def solve_puzzle():
     matching_node = Node
     match_found = False
@@ -467,14 +475,25 @@ if __name__ == "__main__":
     # hardcore
     # init_array = ([SPACER, 2, 12, 6], [9, 7, 14, 13], [5, 4, 1, 11], [3, 15, 10, 8])
     target_data = ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, SPACER])
+
+    # array dims check
+    assert len(init_array) == len(target_data)
+    for rnum, row in enumerate(init_array):
+        assert len(row) == len(target_data[rnum])
+
     print_selected_Hfunc()
 
     # solver init
     t0 = time.time()
-    nrows, ncols = len(init_array), len(init_array[0])
+    nrows, ncols = len(target_data), len(target_data[0])
+    manhattan_helper = init_manhattan_helper() if calc_hfunc is calc_hfunc_manhattan else None
+    operations = (Fi_1_expand, Fi_2_expand, Fi_3_expand, Fi_4_expand)
+
+    # node init
     head_node = Node(parrent=None, data=init_array, g_func=0, h_func=calc_hfunc(init_array), used_operation=0)
     target_node = Node(parrent=None, data=target_data, g_func=0, h_func=0, used_operation=0)
-    operations = (Fi_1_expand, Fi_2_expand, Fi_3_expand, Fi_4_expand)
+
+    # working sets init
     OPENED = {head_node.id_: head_node}
     CLOSED = {}
     f_func_list = sorted_collection.SortedCollection(key=operator.itemgetter(0))

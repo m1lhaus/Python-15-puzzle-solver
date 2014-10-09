@@ -14,7 +14,7 @@ Python script based on [A* algorithm](http://en.wikipedia.org/wiki/A*_search_alg
 ### Main features
 
  * solver script is pure [Python 2.7](https://www.python.org/download/releases/2.7/), visualization is written in [PyQt4](http://www.riverbankcomputing.co.uk/software/pyqt/intro)
- * algorithm can solve other puzzle dimensions (3x3, 5x5, etc.)
+ * algorithm can be simply modified to solve other puzzle dimensions (3x3, 5x5, etc.)
  * algorithm uses associative arrays to speed up OPENED, CLOSED set searching
 
 

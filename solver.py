@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import time
-import sys
-import sorted_collection
-import operator
-
 import sip
 
 sip.setapi('QDate', 2)
@@ -17,7 +12,13 @@ sip.setapi('QUrl', 2)
 sip.setapi('QVariant', 2)
 
 from PyQt4 import QtGui
-import gui
+
+import time
+import sys
+import operator
+
+from components import sorted_collection
+from components import gui
 
 # CONSTANTS
 Fi_1_COST = 1

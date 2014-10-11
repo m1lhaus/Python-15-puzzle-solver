@@ -20,40 +20,41 @@ import operator
 from components import sorted_collection
 from components import gui
 
-# CONSTANTS
+# ---- CONSTANTS -----
 Fi_1_COST = 1
 Fi_2_COST = 1
 Fi_3_COST = 1
 Fi_4_COST = 1
+# ---
 Fi_1_name = 1
 Fi_2_name = 2
 Fi_3_name = 3
 Fi_4_name = 4
-MOVES = {0: u"INIT", 1: u"▮▮_→", 2: u"▮▮_↓", 3: u"←_▮▮", 4: u"▮▮_↑"}
+MOVES = {0: u"INIT", 1: u"▮▮_→", 2: u"▮▮_↓", 3: u"←_▮▮", 4: u"▮▮_↑"}            # readable representation of move id
 SPACER = 0
-# manhattan_helper = {1: (0, 0), 2: (0, 1), 3: (0, 2), 4: (0, 3),           # ONLY FOR 4x4 !
-#                     5: (1, 0), 6: (1, 1), 7: (1, 2), 8: (1, 3),
-#                     9: (2, 0), 10: (2, 1), 11: (2, 2), 12: (2, 3),
-#                     13: (3, 0), 14: (3, 1), 15: (3, 2), 0: (3, 3)}
+# manhattan_helper = init_manhattan_helper() if calc_hfunc is calc_hfunc_manhattan else None
+manhattan_helper = {1: (0, 0), 2: (0, 1), 3: (0, 2), 4: (0, 3),
+                    5: (1, 0), 6: (1, 1), 7: (1, 2), 8: (1, 3),
+                    9: (2, 0), 10: (2, 1), 11: (2, 2), 12: (2, 3),
+                    13: (3, 0), 14: (3, 1), 15: (3, 2), 0: (3, 3)}              # ONLY FOR 4x4 !
 
 
 class Node():
 
-    def __init__(self, parrent, data, used_operation, g_func=0, h_func=0):
+    def __init__(self, parent, data, used_operation, g_func=0, h_func=0):
         self.childs = None
-
-        self.parrent = parrent
+        self.parent = parent
         self.data = data
-        self.id_ = str(data[0] + data[1] + data[2] + data[3]).replace(" ", "")
+        self.id_ = str(data[0] + data[1] + data[2] + data[3]).replace(" ", "")     # from 2D make 1D array -> toString()
         self.g_func = g_func
         self.h_func = h_func
         self.f_func = g_func + h_func
-
-        self.used_operation = used_operation      # which operation leaded to this node
+        self.used_operation = used_operation                        # which operation (operation id) leaded to this node
 
     def get_child(self):
         """
-        Acts like iterator. Always returns next child, or raises StopIteration exception.
+        Always returns next child, or raises StopIteration exception.
+        Python generator. Acts like iterator.
         """
         for leaf in self.childs:
             yield leaf
@@ -62,22 +63,37 @@ class Node():
         return self.childs is not None
 
     def print_whole_node(self, last_expanded, indent=u'|'):
+        """
+        Recursively prints whole node subtree or whole tree for head_node.
+        Last expanded node is marked with different indent char.
+        :param last_expanded: last expanded node
+        :param indent: indent character
+        """
         if last_expanded is self:
             indent = indent.replace(u"|", u">")
 
+        # print current node
         print indent, unicode(self)
+
+        # prints node childs (descendants) -> leads to recursion
         indent += u"|"
         if self.childs is not None:
             for descendant in self.get_child():
                 descendant.print_whole_node(last_expanded=last_expanded, indent=indent)
 
     def __str__(self):
+        """
+        Custom class string representation.
+        """
         output = u"id: %s || g_func: %s || hfunc: %s || f_func: %s || data: %s || used_operation: %s" % \
                  (self.id_, self.g_func, self.h_func, self.f_func, self.data, MOVES[self.used_operation])
-
         return output
 
     def __eq__(self, other_id):
+        """
+        When comparing two nodes, only their id is important.
+        Much faster than compare raw data ('data' field).
+        """
         return self.id_ == other_id
 
     def __ne__(self, other):
@@ -121,7 +137,7 @@ def equals_with_branch_ancestors(node, new_node_id):
         if node.id_ == new_node_id:
             return True
 
-        node = node.parrent
+        node = node.parent
 
     return False
 
@@ -137,7 +153,7 @@ def remove_node_and_all_descendants(node, top_node=False):
     if not node.has_any_child():
         if not top_node:
             # delete reference so object could be released from memory
-            node.parrent = None
+            node.parent = None
 
             # delete from OPENED or CLOSED set
             try:
@@ -194,8 +210,8 @@ def remove_node_and_all_descendants(node, top_node=False):
 
                 len_f_func_list -= 1
 
-        node.parrent.childs.remove(node)
-        node.parrent = None               # delete reference so object could be released from memory
+        node.parent.childs.remove(node)
+        node.parent = None               # delete reference so object could be released from memory
 
     else:
         return to_remove_from_f_func_list
@@ -358,10 +374,10 @@ def print_output_and_return_all_moves():
     j = 0
     steps = []
     current_node = matching_node
-    while current_node.parrent is not None:
+    while current_node.parent is not None:
         j += 1
         steps.append(current_node.used_operation)
-        current_node = current_node.parrent
+        current_node = current_node.parent
 
     print "\n\n" + "-" * 100
     steps.reverse()
@@ -412,7 +428,7 @@ def solve_puzzle():
             # create new node from expanded data
             new_data, oper_name, oper_cost = expanded_tuple
             new_g_func = work_node.g_func + oper_cost
-            new_node = Node(parrent=work_node, data=new_data, g_func=new_g_func,
+            new_node = Node(parent=work_node, data=new_data, g_func=new_g_func,
                             h_func=calc_hfunc(new_data), used_operation=oper_name)
 
             # is this target node?
@@ -486,12 +502,12 @@ if __name__ == "__main__":
     # solver init
     t0 = time.time()
     nrows, ncols = len(target_data), len(target_data[0])
-    manhattan_helper = init_manhattan_helper() if calc_hfunc is calc_hfunc_manhattan else None
+
     operations = (Fi_1_expand, Fi_2_expand, Fi_3_expand, Fi_4_expand)
 
     # node init
-    head_node = Node(parrent=None, data=init_array, g_func=0, h_func=calc_hfunc(init_array), used_operation=0)
-    target_node = Node(parrent=None, data=target_data, g_func=0, h_func=0, used_operation=0)
+    head_node = Node(parent=None, data=init_array, g_func=0, h_func=calc_hfunc(init_array), used_operation=0)
+    target_node = Node(parent=None, data=target_data, g_func=0, h_func=0, used_operation=0)
 
     # working sets init
     OPENED = {head_node.id_: head_node}

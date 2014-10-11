@@ -32,7 +32,6 @@ Fi_3_name = 3
 Fi_4_name = 4
 MOVES = {0: u"INIT", 1: u"▮▮_→", 2: u"▮▮_↓", 3: u"←_▮▮", 4: u"▮▮_↑"}            # readable representation of move id
 SPACER = 0
-# manhattan_helper = init_manhattan_helper() if calc_hfunc is calc_hfunc_manhattan else None
 manhattan_helper = {1: (0, 0), 2: (0, 1), 3: (0, 2), 4: (0, 3),
                     5: (1, 0), 6: (1, 1), 7: (1, 2), 8: (1, 3),
                     9: (2, 0), 10: (2, 1), 11: (2, 2), 12: (2, 3),
@@ -144,38 +143,41 @@ def equals_with_branch_ancestors(node, new_node_id):
 
 def remove_node_and_all_descendants(node, top_node=False):
     """
-    Removes all descendants of the node from OPENED and CLOSED list
+    Removes all descendants of the node from OPENED and CLOSED list.
+    TOP NODE is the node which is on top of removing, basically 'on top of the tree'.
     :type node: Node
+    :type top_node: bool
     """
     to_remove_from_f_func_list = []
 
-    # node is a leaf
+    # IF node is a leaf ?
     if not node.has_any_child():
+        # because top node is being processed differently
         if not top_node:
-            # delete reference so object could be released from memory
-            node.parent = None
-
-            # delete from OPENED or CLOSED set
+            node.parent = None              # delete reference so object could be released from memory
+            # try to delete from OPENED or CLOSED set
             try:
                 del OPENED[node.id_]
             except KeyError:
                 try:
                     del CLOSED[node.id_]
                 except KeyError:
-                    raise Exception("Not in OPENED neither in CLOSED!")
+                    raise Exception("Node %s is not in OPENED neither in CLOSED!" % node.id_)
             else:
-                # node was in closed set so it must be also in f_func_list
+                # node was found in OPENED set so it must be also deleted from f_func_list
                 to_remove_from_f_func_list.append(node.id_)
 
             return to_remove_from_f_func_list
 
+    # ok, so node has some other descendants -> process them => leads to recursion
     else:
         for child in node.get_child():
             to_remove_from_f_func_list.extend(remove_node_and_all_descendants(child))
+        node.next = None                # delete reference so object could be released from memory
 
-        node.next = None
-
-    # remove node itself from parent.next list
+    # --------------------------------------------------------------------------------------------------
+    # remove top_node itself from OPENED, CLOSED and parent.next list
+    # also all removed nodes from OPENED set must be removed from f_func_list !!!
     if top_node:
         # delete from OPENED or CLOSED set
         try:
@@ -184,11 +186,12 @@ def remove_node_and_all_descendants(node, top_node=False):
             try:
                 del CLOSED[node.id_]
             except KeyError:
-                raise Exception("Not in OPENED neither in CLOSED!")
+                raise Exception("Node %s is not in OPENED neither in CLOSED!" % node.id_)
         else:
-            # node was in closed set so it must be also in f_func_list
+            # node was found in OPENED set so it must be also deleted from f_func_list
             to_remove_from_f_func_list.append(node.id_)
 
+        # remove all already removed nodes from OPENED set also from f_func_list
         idx = 0
         len_f_func_list = len(f_func_list)
         while idx < len_f_func_list:
@@ -198,17 +201,17 @@ def remove_node_and_all_descendants(node, top_node=False):
             f_func, id_ = f_func_list[idx]
 
             try:
-                # same as: if node_id in to_remove_from_f_func_list:    ...  but returns index
+                # same meaning as:  if node_id in to_remove_from_f_func_list then getIndexInList(node_id)
                 remove_index = to_remove_from_f_func_list.index(id_)
             except ValueError:
+                # if exception has been risen, it means that this node_id won't be removed from f_func_list
                 idx += 1
             else:
-                assert f_func_list[idx][1] == to_remove_from_f_func_list[remove_index]
-
+                assert f_func_list[idx][1] == to_remove_from_f_func_list[remove_index]          # todo: sanity test - remove
+                # the node_id is planned to be removed, so do it
                 del f_func_list[idx]
                 del to_remove_from_f_func_list[remove_index]
-
-                len_f_func_list -= 1
+                len_f_func_list -= 1                                # watch out! -- we have removed item from list !
 
         node.parent.childs.remove(node)
         node.parent = None               # delete reference so object could be released from memory
@@ -220,8 +223,7 @@ def remove_node_and_all_descendants(node, top_node=False):
 def calc_hfunc_positions(data):
     """
     Returns how many values are on their places.
-    Skips SPACER.
-    :type data: tuple or list
+    :type data: (list, list, list, list)
     :rtype: int
     """
     h = 0
@@ -230,47 +232,41 @@ def calc_hfunc_positions(data):
             if data[ii][jj] != target_data[ii][jj]:
                 h += 1
 
-    return h            # - 1 if h != 0 else 0               # count only numbers, not SPACER
+    return h                                    # - 1 if h != 0 else 0  # count only numbers, not SPACER
 
 
 def calc_hfunc_manhattan(data):
     """
-    Returns sum of many values steps takes move each number to its correct position.
-    Skips SPACER position.
-    :type data: tuple or list
+    Returns sum of how many steps takes move each number to its correct position. But skips SPACER position.
+    Method calculate the so-called manhattan distance (city block distance)
+    :type data: (list, list, list, list)
     :rtype: int
     """
     h = 0
     for ii in range(nrows):
         for jj in range(ncols):
-            num = data[ii][jj]            # number in 'data' matrix
+            num = data[ii][jj]                      # number in 'data' matrix
             if num != SPACER:
-                num1 = (ii, jj)           # coordinates where number from 'data' is
-                num2 = manhattan_helper[num]      # coordinates where should number from 'data' matrix be
-                #h += cityblock((i, j), places[num])                        # uses cipy.spatial.distance.cityblock
+                num1 = (ii, jj)                     # coordinates where number from 'data' is
+                num2 = manhattan_helper[num]        # coordinates where should number from 'data' matrix be
                 h += abs(num1[0] - num2[0]) + (abs(num1[1] - num2[1]))      # from its correct position
     return h
 
 
 def calc_hfunc_none(data):
     """
-    :type data: ndarray
+    :type data: (list, list, list, list)
     :rtype: int
     """
     return 0
 
 
-def init_manhattan_helper():
-    manhattan_helper = {}
-    for ii in range(nrows):
-        for jj in range(ncols):
-            manhattan_helper[target_data[ii][jj]] = (ii, jj)
-
-    del manhattan_helper[SPACER]
-    return manhattan_helper
-
-
 def find_spacer(data):
+    """
+    Returns SPACER coordinates in data array.
+    :type data: list
+    :return: (int, int)
+    """
     for ii in range(nrows):
         for jj in range(ncols):
             if data[ii][jj] == SPACER:
@@ -281,8 +277,9 @@ def find_spacer(data):
 
 def Fi_1_expand(data, previously_used):
     """
-    ▮▮→
-    :type data: ndarray
+    Moves SPACER one box to the right ...  ▮▮→
+    :type data: (list, list, list, list)
+    :rtype: list, int, int
     """
     # check for complementary operation
     if previously_used == 3:
@@ -303,9 +300,10 @@ def Fi_1_expand(data, previously_used):
 
 def Fi_2_expand(data, previously_used):
     """
-    ▮▮
-    ↓
-    :type data: ndarray
+    Moves SPACER one box down ...  ▮▮
+                                   ↓
+    :type data: (list, list, list, list)
+    :rtype: list, int, int
     """
     if previously_used == 4:
         return False
@@ -325,8 +323,9 @@ def Fi_2_expand(data, previously_used):
 
 def Fi_3_expand(data, previously_used):
     """
-    ←▮▮
-    :type data: ndarray
+    Moves SPACER one box to the left ... ←▮▮
+    :type data: (list, list, list, list)
+    :rtype: list, int, int
     """
     if previously_used == 1:
         return False
@@ -346,9 +345,10 @@ def Fi_3_expand(data, previously_used):
 
 def Fi_4_expand(data, previously_used):
     """
-    ↑
-    ▮▮
-    :type data: ndarray
+    Moves SPACER one box up ... ↑
+                                ▮▮
+    :type data: (list, list, list, list)
+    :rtype: list, int, int
     """
     if previously_used == 2:
         return False
@@ -367,36 +367,53 @@ def Fi_4_expand(data, previously_used):
 
 
 def print_output_and_return_all_moves():
+    """
+    When solving loop ends, method recursively digs out solution (sequence of moves).
+    Each move is printed out in readable representation.
+    """
     if matching_node is None:
-        print "\n", u"OPENED is EMPTY, solution not found!"
+        print "\n", "OPENED is EMPTY, solution not found!"
         return
 
     j = 0
     steps = []
     current_node = matching_node
-    while current_node.parent is not None:
+    while current_node.parent is not None:          # recursively digs out path that leads to the solution
         j += 1
         steps.append(current_node.used_operation)
         current_node = current_node.parent
 
     print "\n\n" + "-" * 100
-    steps.reverse()
-    for step in steps:            # because of recursive way to get steps/moves, moves are in reversed order
+    steps.reverse()             # because of recursive way to get steps/moves, moves are in reversed order
+    for step in steps:
         print MOVES[step] + " ",
     print "\n", "-" * 100
-    print u"\nThe number of moves:", \
+    print "\nThe number of moves:", \
 
     return steps
 
 
-def print_selected_Hfunc():
+def check_array_dim():
+    assert len(init_array) == len(target_data)
+    assert len(init_array[0]) == len(target_data[0])
+    assert len(init_array[1]) == len(target_data[1])
+    assert len(init_array[2]) == len(target_data[2])
+    assert len(init_array[3]) == len(target_data[3])
+
+
+def print_selected_hfunc():
+    """
+    Only prints out which h_func has been selected.
+    """
     if calc_hfunc is calc_hfunc_positions:
         print "H function: position"
     elif calc_hfunc is calc_hfunc_manhattan:
         print "H function: manhattan"
     elif calc_hfunc is calc_hfunc_none:
         print "H function: None"
+
     print "="*100
+
 
 def solve_puzzle():
     matching_node = Node
@@ -463,10 +480,6 @@ def solve_puzzle():
         last_expanded = work_node
         work_node.childs = new_nodes if new_nodes else None
 
-        # print "-" * 100
-        # head_node.print_whole_node(last_expanded)
-        # print "-" * 100, "\n"
-
         sys.stdout.write('\riteration: %s, h_func: %s' % (iteration, work_node.h_func))
         sys.stdout.flush()          # important
 
@@ -478,7 +491,9 @@ def solve_puzzle():
 
 
 if __name__ == "__main__":
-    # ---- IMPORTANT - SELECT only one !!! ------
+    # ===============================================================================================================
+
+    # ----   IMPORTANT - SELECT only one   ------
     # calc_hfunc = calc_hfunc_positions
     calc_hfunc = calc_hfunc_manhattan
     # calc_hfunc = calc_hfunc_none
@@ -492,17 +507,14 @@ if __name__ == "__main__":
     # init_array = ([SPACER, 2, 12, 6], [9, 7, 14, 13], [5, 4, 1, 11], [3, 15, 10, 8])
     target_data = ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, SPACER])
 
-    # array dims check
-    assert len(init_array) == len(target_data)
-    for rnum, row in enumerate(init_array):
-        assert len(row) == len(target_data[rnum])
+    # ============================================SOLVER============================================================
 
-    print_selected_Hfunc()
+    check_array_dim()
+    print_selected_hfunc()
 
     # solver init
     t0 = time.time()
     nrows, ncols = len(target_data), len(target_data[0])
-
     operations = (Fi_1_expand, Fi_2_expand, Fi_3_expand, Fi_4_expand)
 
     # node init
@@ -517,17 +529,18 @@ if __name__ == "__main__":
 
     # SOLVE PUZZLE
     matching_node, iteration = solve_puzzle()
-
     solving_steps = print_output_and_return_all_moves()
+
     print u"The number of iterations:", iteration
     print u"Total time consumed: %ss" % (time.time() - t0)
 
-    app = QtGui.QApplication(sys.argv)
-    app.setApplicationName(u"'15' puzzle solver")
+    # ===============================================GUI=============================================================
 
-    main = gui.MainWindow(nrows, ncols, init_array, SPACER, solving_steps)
-    main.show()
-    app.exec_()
+    # app = QtGui.QApplication(sys.argv)
+    # app.setApplicationName(u"'15' puzzle solver")
+    # main = gui.MainWindow(nrows, ncols, init_array, SPACER, solving_steps)
+    # main.show()
+    # app.exec_()
 
 
 

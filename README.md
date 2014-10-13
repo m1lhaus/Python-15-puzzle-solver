@@ -1,5 +1,5 @@
 
-#### WARNING: Not yet fully tested!
+#### WARNING: Not fully tested and no check for solvability!
 ----
 
 

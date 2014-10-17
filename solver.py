@@ -30,7 +30,8 @@ Fi_1_name = 1
 Fi_2_name = 2
 Fi_3_name = 3
 Fi_4_name = 4
-MOVES = {0: u"INIT", 1: u"▮▮_→", 2: u"▮▮_↓", 3: u"←_▮▮", 4: u"▮▮_↑"}            # readable representation of move id
+# MOVES = {0: u"INIT", 1: u"▮▮_→", 2: u"▮▮_↓", 3: u"←_▮▮", 4: u"▮▮_↑"}            # readable representation of move id
+MOVES = {0: u"INIT", 1: u"RIGHT", 2: u"DOWN", 3: u"LEFT", 4: u"UP"}            # readable representation of move id
 SPACER = 0
 manhattan_helper = {1: (0, 0), 2: (0, 1), 3: (0, 2), 4: (0, 3),
                     5: (1, 0), 6: (1, 1), 7: (1, 2), 8: (1, 3),
@@ -386,7 +387,7 @@ def print_output_and_return_all_moves():
     print "\n\n" + "-" * 100
     steps.reverse()             # because of recursive way to get steps/moves, moves are in reversed order
     for step in steps:
-        print MOVES[step] + " ",
+        print MOVES[step],
     print "\n", "-" * 100
     print "\nThe number of moves:", \
 
@@ -536,11 +537,11 @@ if __name__ == "__main__":
 
     # ===============================================GUI=============================================================
 
-    # app = QtGui.QApplication(sys.argv)
-    # app.setApplicationName(u"'15' puzzle solver")
-    # main = gui.MainWindow(nrows, ncols, init_array, SPACER, solving_steps)
-    # main.show()
-    # app.exec_()
+    app = QtGui.QApplication(sys.argv)
+    app.setApplicationName(u"'15' puzzle solver")
+    main = gui.MainWindow(nrows, ncols, init_array, SPACER, solving_steps)
+    main.show()
+    app.exec_()
 
 
 
